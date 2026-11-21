@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Sharper Insights Pro — Football AI</title>
+<style>
+:root{--bg:#0b1220;--panel:#121e31;--panel2:#0e192a;--line:#26364d;--txt:#eef5ff;--muted:#91a4bd;--green:#20d68a;--yellow:#f6c453;--red:#ff6878;--blue:#65a9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px Arial,sans-serif;padding:16px}.wrap{max-width:900px;margin:auto}
+header{text-align:center;padding:18px 4px 12px}h1{font-size:clamp(26px,6vw,36px);margin:0;line-height:1.15}h1 span{color:var(--green)}.sub{color:var(--muted);font-size:13px;line-height:1.5;margin:9px auto 0;max-width:650px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px;margin:13px 0;box-shadow:0 8px 24px #0002}
+h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:17px 0 8px}
+label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin:12px 0 6px;letter-spacing:.3px}
+select,input,button{font:inherit}select,input{width:100%;padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);min-height:46px}
+.row{display:grid;grid-template-columns:1fr 36px 1fr;gap:8px;align-items:end}.vs{text-align:center;color:var(--green);font-weight:bold;padding-bottom:14px}
+button{border:0;border-radius:11px;padding:13px 16px;background:var(--green);color:#052116;font-weight:800;cursor:pointer;min-height:46px}button:disabled{opacity:.55;cursor:wait}.secondary{background:#21344e;color:var(--txt);border:1px solid var(--line)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.muted{color:var(--muted)}.tiny{font-size:12px;line-height:1.5}.status{padding:10px 12px;border-radius:10px;background:#18283d;color:var(--muted);font-size:13px;line-height:1.45;margin-top:10px}.status.good{color:#9df2ca;background:#103326}.status.warn{color:#ffe1a0;background:#382d13}.status.bad{color:#ffb0b8;background:#3a1b25}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.pill{font-size:11px;padding:5px 9px;border-radius:99px;background:#183c31;color:#8df0c1}.pill.warn{background:#3d3218;color:#ffdc87}.pill.bad{background:#401f29;color:#ff9da8}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{font-size:20px;display:block;margin:5px 0}.stat span{font-size:11px;color:var(--muted)}
+.bar{margin:12px 0}.barhead{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:6px}.track{height:9px;border-radius:99px;background:#2b3b52;overflow:hidden}.fill{height:100%;border-radius:99px;background:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left}th{font-size:11px;color:var(--muted)}
+.market{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.market:last-child{border:0}.market strong{font-size:14px}.market small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.prob{font-weight:800;color:var(--green);white-space:nowrap}.na{color:var(--muted);font-weight:600}
+.scorelist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.score{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px;text-align:center}.score b{font-size:22px;color:var(--green);display:block}.score small{font-size:11px;color:var(--muted)}
+footer{text-align:center;color:#667991;font-size:11px;padding:15px 4px 25px}
+@media(max-width:520px){body{padding:10px}.card{padding:13px}.grid{grid-template-columns:1fr 1fr}.actions{grid-template-columns:1fr}.row{grid-template-columns:1fr 25px 1fr}.scorelist{gap:5px}.score{padding:10px 4px}}
+</style></head>
+<body><main class="wrap">
+<header><h1>Sharper Insights.<br><span>Every Match. Every League.</span></h1><p class="sub">Football analysis from live ESPN fixture and match data • No fabricated team database • Android & Chrome ready</p></header>
+<section class="card">
+<h2>⚽ Select a real fixture</h2>
+<label for="league">COUNTRY / LEAGUE</label><select id="league"></select>
+<div class="actions"><button id="loadBtn" type="button">↻ Load fixtures</button><button class="secondary" id="todayBtn" type="button">Today / Upcoming</button></div>
+<label for="match">FIXTURE</label><select id="match"><option value="">Load a league first</option></select>
+<div class="status" id="apiStatus">Connect to ESPN to load current fixtures. Internet connection required.</div>
+<button id="analyzeBtn" type="button" style="width:100%;margin-top:12px">BUILD FULL ANALYSIS</button>
+<p class="tiny muted" style="margin:10px 0 0">Times are shown in your device's local time. ESPN coverage varies by competition; unsupported or missing statistics are shown as Unavailable.</p>
+</section>
+<div id="output"></div>
+<footer>Sharper Insights Pro • Data-led estimates, not guaranteed outcomes. For information only.</footer>
+</main>
+<script>
+"use strict";
+const API="https://site.api.espn.com/apis/site/v2/sports/soccer/";
+const LEAGUES=[
+ ["eng.1","England — Premier League"],["eng.2","England — Championship"],["esp.1","Spain — LaLiga"],["ita.1","Italy — Serie A"],["ger.1","Germany — Bundesliga"],["fra.1","France — Ligue 1"],["ned.1","Netherlands — Eredivisie"],["por.1","Portugal — Primeira Liga"],["usa.1","USA — MLS"],["bra.1","Brazil — Serie A"],["arg.1","Argentina — Liga Profesional"],["mex.1","Mexico — Liga MX"],["jpn.1","Japan — J League"],["kor.1","South Korea — K League 1"],["rsa.1","South Africa — Premiership"],["uefa.champions","UEFA Champions League"],["uefa.europa","UEFA Europa League"],["uefa.europa.conf","UEFA Conference League"],["fifa.world","International — World Cup"]];
+const $=id=>document.getElementById(id);
+let events=[],selectedEvent=null;
+function setStatus(msg,type=""){ $("apiStatus").className="status "+type; $("apiStatus").textContent=msg; }
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+async function getJSON(url){
+ const r=await fetch(url,{headers:{"Accept":"application/json"}});
+ if(!r.ok) throw new Error("ESPN responded HTTP "+r.status);
+ return await r.json();
+}
+function localDate(iso){if(!iso)return "Time unavailable";let d=new Date(iso);return isNaN(d)?"Time unavailable":d.toLocaleString([], {weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}
+function init(){LEAGUES.forEach(([id,name])=>{let o=document.createElement("option");o.value=id;o.textContent=name;$("league").appendChild(o)});$("loadBtn").onclick=loadFixtures;$("todayBtn").onclick=loadFixtures;$("analyzeBtn").onclick=analyze;$("league").onchange=loadFixtures;loadFixtures();}
+async function loadFixtures(){
+ const league=$("league").value;const btn=$("loadBtn");btn.disabled=true;$("match").innerHTML='<option>Loading fixtures…</option>';setStatus("Contacting ESPN live fixture feed…");
+ try{
+  const data=await getJSON(API+encodeURIComponent(league)+"/scoreboard?limit=100");
+  events=data.events||[];
+  $("match").innerHTML="";
+  if(!events.length){$("match").innerHTML='<option value="">No fixtures returned</option>';setStatus("ESPN returned no fixtures for this competition/date. Try another league.","warn");return;}
+  events.forEach((ev,i)=>{let c=ev.competitions?.[0]?.competitors||[];let home=c.find(x=>x.homeAway==="home")||c[0];let away=c.find(x=>x.homeAway==="away")||c[1];let o=document.createElement("option");o.value=String(i);o.textContent=(home?.team?.displayName||"Home")+" vs "+(away?.team?.displayName||"Away")+" — "+localDate(ev.date);$("match").appendChild(o)});
+  setStatus("Loaded "+events.length+" ESPN fixture(s). Choose a match and build its analysis.","good");
+ }catch(e){$("match").innerHTML='<option value="">Fixtures unavailable</option>';setStatus("Could not load ESPN fixtures: "+e.message+". Check internet or try again later. No sample data has been substituted.","bad");}
+ finally{btn.disabled=false;}
+}
+function poisson(lambda,k){if(!Number.isFinite(lambda)||lambda<0)return 0;let p=Math.exp(-lambda);for(let n=1;n<=k;n++)p*=lambda/n;return p;}
+function sum(arr){return arr.reduce((a,b)=>a+b,0)}
+function teamFromEvent(ev,side){let c=ev.competitions?.[0]?.competitors||[];return c.find(x=>x.homeAway===side)||null;}
+function scoreOf(team){let s=team?.score;let n=Number(s);return Number.isFinite(n)?n:null;}
+function getTeamId(t){return t?.team?.id||t?.id||null;}
+async function recentTeam(team){
+ const id=getTeamId(team);
+ if(!id)return {matches:[],available:false,reason:"Team identifier unavailable"};
+ const league=encodeURIComponent($("league").value);
+ const teamId=encodeURIComponent(id);
+ // ESPN's soccer schedule can include completed games without the
+ // completed boolean set consistently. Request fixture data, then validate
+ // the score and team identity instead of trusting that flag alone.
+ const urls=[
+  API+league+"/teams/"+teamId+"/schedule?fixture=true&limit=100",
+  API+league+"/teams/"+teamId+"/schedule?limit=100"
+ ];
+ let lastError="No completed scored matches returned";
+ for(const url of urls){
+  try{
+   const d=await getJSON(url);
+   const raw=Array.isArray(d.events)?d.events:
+             Array.isArray(d.items)?d.items:[];
+   const now=Date.now();
+   const list=raw.filter(e=>{
+    const cs=e.competitions?.[0]?.competitors||[];
+    if(cs.length!==2)return false;
+    const date=Date.parse(e.date||"");
+    if(!Number.isFinite(date)||date>now)return false;
+    const hasScores=cs.every(x=>scoreOf(x)!==null);
+    return hasScores;
+   }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+   const matches=[];
+   for(const e of list){
+    const cs=e.competitions[0].competitors;
+    const me=cs.find(x=>String(getTeamId(x))===String(id));
+    if(!me)continue;
+    const op=cs.find(x=>x!==me);
+    const isHome=me.homeAway==="home";
+    matches.push({
+     date:e.date,
+     for:scoreOf(me),
+     against:scoreOf(op),
+     opponent:op?.team?.displayName||"Opponent",
+     homeAway:me.homeAway||""
+    });
+    if(matches.length===5)break;
+   }
+   if(matches.length)return {matches,available:true};
+   lastError="ESPN schedule returned no past matches with verified scores for this team";
+  }catch(e){lastError=e.message;}
+ }
+ return {matches:[],available:false,reason:lastError};
+}
+function market(name,desc,p){return `<div class="market"><div><strong>${esc(name)}</strong><small>${esc(desc||"")}</small></div><div class="${p==null?'na':'prob'}">${p==null?'Unavailable':Math.round(p*100)+'%'}</div></div>`;}
+function pct(v){return Math.max(0,Math.min(100,Math.round(v*100)));}
+function outcomeProb(lh,la){
+ let h=0,d=0,a=0,over15=0,over25=0,over35=0,btts=0,homeScore=0,awayScore=0,tot=[];
+ for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){
+  let p=poisson(lh,i)*poisson(la,j);tot.push(p);
+  if(i>j)h+=p;else if(i===j)d+=p;else a+=p;
+  if(i+j>=2)over15+=p;if(i+j>=3)over25+=p;if(i+j>=4)over35+=p;
+  if(i>0&&j>0)btts+=p;if(i>0)homeScore+=p;if(j>0)awayScore+=p;
+ }
+ let z=sum(tot);return {h:h/z,d:d/z,a:a/z,over15:over15/z,over25:over25/z,over35:over35/z,btts:btts/z,homeScore:homeScore/z,awayScore:awayScore/z};
+}
+function analyze(){
+ const idx=$("match").value;if(idx===""){setStatus("Choose a fixture first.","warn");return;}
+ selectedEvent=events[Number(idx)];runAnalysis(selectedEvent);
+}
+async function runAnalysis(ev){
+ const h=teamFromEvent(ev,"home")||ev.competitions?.[0]?.competitors?.[0],a=teamFromEvent(ev,"away")||ev.competitions?.[0]?.competitors?.[1];
+ if(!h||!a){$("output").innerHTML='<section class="card">Fixture details unavailable from ESPN.</section>';return;}
+ $("analyzeBtn").disabled=true;$("output").innerHTML='<section class="card"><b>Fetching verified match details…</b><p class="tiny muted">Loading recent team results and match statistics. Missing information will remain unavailable.</p></section>';
+ try{
+  let summary=null,summaryError=null;
+  try{summary=await getJSON(API+encodeURIComponent($("league").value)+"/summary?event="+encodeURIComponent(ev.id));}catch(e){summaryError=e.message;}
+  const [hr,ar]=await Promise.all([recentTeam(h),recentTeam(a)]);
+  const hGF=hr.available?sum(hr.matches.map(x=>x.for))/hr.matches.length:null;
+  const hGA=hr.available?sum(hr.matches.map(x=>x.against))/hr.matches.length:null;
+  const aGF=ar.available?sum(ar.matches.map(x=>x.for))/ar.matches.length:null;
+  const aGA=ar.available?sum(ar.matches.map(x=>x.against))/ar.matches.length:null;
+  const venue=h.homeAway==="home"?"Home": "Neutral";
+  let lh=(hGF!==null&&aGA!==null)?Math.max(.15,(hGF+aGA)/2*(venue==="Home"?1.08:1)):null;
+  let la=(aGF!==null&&hGA!==null)?Math.max(.15,(aGF+hGA)/2*(venue==="Home"?.94:1)):null;
+  const hasModel=lh!==null&&la!==null;
+  const p=hasModel?outcomeProb(lh,la):null;
+  const scores=[];
+  if(hasModel){for(let i=0;i<=5;i++)for(let j=0;j<=5;j++)scores.push({s:i+" - "+j,p:poisson(lh,i)*poisson(la,j)});scores.sort((x,y)=>y.p-x.p);}
+  const comp=ev.competitions?.[0]||{};
+  const status=ev.status?.type?.description||ev.status?.type?.detail||"Status unavailable";
+  const statGroups=summary?.boxscore?.players||[];
+  let statsRows=[];
+  (summary?.boxscore?.teams||[]).forEach(t=>{
+   (t.statistics||[]).forEach(st=>statsRows.push({team:t.team?.displayName||"Team",name:st.label||st.name,value:st.displayValue??st.value??"Unavailable"}));
+  });
+  const allTeamStats=summary?.boxscore?.teams||[];
+  const statNames=[...new Set(allTeamStats.flatMap(t=>(t.statistics||[]).map(s=>s.label||s.name)))];
+  let statsHtml=statNames.length?`<table><tr><th>Statistic</th><th>${esc(h.team?.displayName)}</th><th>${esc(a.team?.displayName)}</th></tr>${statNames.map(n=>{let hv=allTeamStats.find(t=>t.team?.id==getTeamId(h))?.statistics?.find(s=>(s.label||s.name)===n);let av=allTeamStats.find(t=>t.team?.id==getTeamId(a))?.statistics?.find(s=>(s.label||s.name)===n);return `<tr><td>${esc(n)}</td><td>${esc(hv?.displayValue??hv?.value??"Unavailable")}</td><td>${esc(av?.displayValue??av?.value??"Unavailable")}</td></tr>`}).join("")}</table>`:'<p class="tiny muted">ESPN has not supplied team match statistics for this fixture.</p>';
+  const formText=r=>r.available?r.matches.map(m=>m.for>m.against?"W":m.for===m.against?"D":"L").join(" · "):"Unavailable";
+  const avgText=v=>v===null?"Unavailable":v.toFixed(2);
+  const markets=p?[
+   market("1X2 — "+h.team.displayName+" win","Home win",p.h),market("1X2 — Draw","Draw",p.d),market("1X2 — "+a.team.displayName+" win","Away win",p.a),
+   market("Double Chance 1X","Home win or draw",p.h+p.d),market("Double Chance X2","Draw or away win",p.d+p.a),market("Draw No Bet — Home","Conditional on no draw",p.h/(p.h+p.a)),market("Draw No Bet — Away","Conditional on no draw",p.a/(p.h+p.a)),
+   market("Over 1.5 Goals","2 or more total goals",p.over15),market("Over 2.5 Goals","3 or more total goals",p.over25),market("Over 3.5 Goals","4 or more total goals",p.over35),
+   market("BTTS — Yes","Both teams score",p.btts),market("Home team to score","At least one home goal",p.homeScore),market("Away team to score","At least one away goal",p.awayScore)
+  ].join(""):[
+   ...["1X2 home win","Draw","1X2 away win","Double Chance 1X","Double Chance X2","Draw No Bet","Over 1.5 Goals","Over 2.5 Goals","Over 3.5 Goals","BTTS Yes","Team to score"].map(n=>market(n,"Not enough verified recent results to calculate",null))
+  ].join("");
+  const scoreHtml=hasModel?`<div class="scorelist">${scores.slice(0,3).map(s=>`<div class="score"><b>${s.s}</b><small>${pct(s.p)}% model estimate</small></div>`).join("")}</div>`:'<p class="tiny muted">Unavailable — both teams need recent verified score data.</p>';
+  const confidence=hasModel?(hr.matches.length>=5&&ar.matches.length>=5?"Based on last 5 results":"Limited sample — fewer than 5 results"):"Insufficient data";
+  const xgHtml=hasModel?`<div class="grid"><div class="stat"><span>${esc(h.team.displayName)} estimated goals</span><b>${lh.toFixed(2)}</b></div><div class="stat"><span>${esc(a.team.displayName)} estimated goals</span><b>${la.toFixed(2)}</b></div></div>`:'<div class="status warn">Estimated goals unavailable: recent verified scores could not be fetched for both teams. No ratings have been invented.</div>';
+  $("output").innerHTML=`
+  <section class="card"><h2>${esc(h.team.displayName)} vs ${esc(a.team.displayName)}</h2><p class="tiny muted">${esc(LEAGUES.find(x=>x[0]===$("league").value)?.[1]||"Competition")} • ${esc(localDate(ev.date))} • ${esc(status)}</p><div class="pills"><span class="pill">ESPN fixture</span><span class="pill warn">${esc(confidence)}</span></div>${xgHtml}<p class="tiny muted" style="margin-top:9px">Estimated goals are a simple model derived from recent goals scored/conceded, not official ESPN xG.</p></section>
+  <section class="card"><h2>📊 Team form & recent goals</h2><table><tr><th></th><th>${esc(h.team.displayName)}</th><th>${esc(a.team.displayName)}</th></tr><tr><td>Last results</td><td>${esc(formText(hr))}</td><td>${esc(formText(ar))}</td></tr><tr><td>Matches in sample</td><td>${hr.matches.length||"Unavailable"}</td><td>${ar.matches.length||"Unavailable"}</td></tr><tr><td>Avg goals scored</td><td>${avgText(hGF)}</td><td>${avgText(aGF)}</td></tr><tr><td>Avg goals conceded</td><td>${avgText(hGA)}</td><td>${avgText(aGA)}</td></tr></table></section>
+  <section class="card"><h2>🎯 Prediction markets</h2>${markets}<p class="tiny muted">Probabilities are model estimates, not bookmaker odds or guarantees. Markets requiring unavailable data are not guessed.</p></section>
+  <section class="card"><h2>🥅 Top 3 Correct Scores</h2>${scoreHtml}</section>
+  <section class="card"><h2>📈 Match statistics from ESPN</h2>${statsHtml}${summaryError?`<p class="tiny muted">Match detail feed: ${esc(summaryError)}</p>`:""}</section>
+  <section class="card"><h2>🚩 Corners & additional markets</h2>${market("Total corners / Over-Under","ESPN corner totals not present in the available feed",null)}${market("First team to score","No verified first-goal probability feed",null)}${market("Half-time result","Half-time model not available from current verified data",null)}<div class="status warn">Corners are deliberately marked Unavailable unless the data provider supplies verified corner statistics. This avoids fabricated corner predictions.</div></section>`;
+ }catch(e){$("output").innerHTML=`<section class="card"><div class="status bad">Analysis could not be completed: ${esc(e.message)}. Try another fixture or reload the league. No invented fallback data was used.</div></section>`;}
+ finally{$("analyzeBtn").disabled=false;}
+}
+init();
+</script></body></html>
